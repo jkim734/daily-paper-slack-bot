@@ -7,6 +7,7 @@ from src.db import HistoryDB
 from src.fetchers.arxiv import ArxivFetcher
 from src.fetchers.pubmed import PubmedFetcher
 from src.fetchers.journals import JournalFetcher
+from src.fetchers.scirate import ScirateFetcher
 from src.fetchers.base import Paper
 from src.summarizer import Summarizer
 from src.notifier import SlackNotifier
@@ -99,6 +100,19 @@ def main():
         journal_papers = journal_fetcher.fetch_recent_papers(lookback_days=days)
         print(f"       Found {len(journal_papers)} papers from prestigious journals.")
         all_papers.extend(journal_papers)
+
+    if "scirate" in config.sources:
+        print(f"[Main] Fetching trending papers from SciRate (categories: {config.scirate.categories}, range: {config.scirate.range_days}d, min_scites: {config.scirate.min_scites})...")
+        scirate_fetcher = ScirateFetcher(config.scirate)
+        scirate_papers = scirate_fetcher.fetch_recent_papers(lookback_days=days)
+        print(f"       Found {len(scirate_papers)} trending papers from SciRate.")
+        for sp in scirate_papers:
+            existing = next((p for p in all_papers if p.id == sp.id), None)
+            if existing:
+                existing.scites = sp.scites
+                existing.scirate_url = sp.scirate_url
+            else:
+                all_papers.append(sp)
 
     if not all_papers:
         print("[Main] No papers found for the specified period and criteria.")

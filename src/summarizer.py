@@ -67,11 +67,13 @@ class Summarizer:
         papers_text = []
         for i, p in enumerate(papers, 1):
             venue_info = f"게재/출처: {p.venue}\n" if p.venue else ""
+            scite_info = f"커뮤니티 추천(SciRate): {p.scites} Scites (연구자들의 높은 관심 및 추천)\n" if p.scites else ""
             papers_text.append(
                 f"[논문 {i}]\n"
                 f"ID: {p.id}\n"
                 f"제목: {p.clean_title()}\n"
                 f"{venue_info}"
+                f"{scite_info}"
                 f"초록: {p.clean_abstract()}\n"
             )
         papers_str = "\n".join(papers_text)
@@ -99,7 +101,7 @@ class Summarizer:
 【논문 엄선 기준 (1~10점 평가 지표)】
 1. 연구 주제 일치도 (40%): 양자오류정정(QEC), 표면코드, 결함허용 양자연산, 양자알고리즘(VQE, QAOA 등), QML과의 직접적인 연관성
 2. 기술적 독창성 및 기여도 (30%): 기존 기법 대비 새로운 돌파구(Breakthrough), 오류 임계치 개선, 회로 깊이 단축, 알고리즘 효율성 제고 등
-3. 학술적 권위 및 출처 (20%): 최고 권위 피어리뷰 저널(Nature, PRL, Quantum 등) 게재 논문 및 검증된 연구 우선
+3. 학술적 권위 및 커뮤니티 추천도 (20%): 최고 권위 피어리뷰 저널(Nature, PRL, Quantum 등) 게재 논문 및 SciRate에서 많은 추천(Scites)을 받은 커뮤니티 검증 논문 우선
 4. 구체성 및 완성도 (10%): 단순 추상이 아닌 구체적인 수치, 실험 결과, 시뮬레이션 데이터의 명확성
 
 {lang_instruction}

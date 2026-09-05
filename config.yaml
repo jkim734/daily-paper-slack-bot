@@ -2,10 +2,11 @@
 # Daily Quantum Research Paper Slack Bot Configuration
 # ==============================================================================
 
-# 1. 활성화할 논문 수집 소스 ('arxiv', 'journals')
+# 1. 활성화할 논문 수집 소스 ('arxiv', 'journals', 'scirate')
 sources:
   - arxiv
   - journals
+  - scirate
 
 # 2. arXiv 수집 설정 (양자 연구 분야 프리프린트)
 arxiv:
@@ -63,7 +64,17 @@ journals:
   # 저널 발행 주기(주간/월간)를 감안한 최근 N일 검색 (기본 7일)
   lookback_days: 7
 
-# 4. LLM 요약기 설정 (Google Gemini)
+# 4. SciRate 커뮤니티 추천 인기 논문 모니터링 (https://scirate.com)
+scirate:
+  categories:
+    - quant-ph
+  # 모니터링 기간 범위 (1일: 1, 3일: 3, 7일: 7, 31일: 31)
+  range_days: 7
+  # 최소 Scites(추천 수) 필터 (커뮤니티에서 검증된 주목도 높은 논문 위주 수집)
+  min_scites: 3
+  max_results: 30
+
+# 5. LLM 요약기 설정 (Google Gemini)
 summarizer:
   provider: gemini
   model: gemini-3.6-flash

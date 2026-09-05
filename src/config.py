@@ -54,15 +54,19 @@ class NotionConfig(BaseModel):
     default_status: str = "읽을 예정"
 
 
+from .fetchers.scirate import ScirateConfig
+
+
 class StorageConfig(BaseModel):
     db_path: str = "data/history.db"
 
 
 class AppConfig(BaseModel):
-    sources: List[str] = Field(default_factory=lambda: ["arxiv", "journals"])
+    sources: List[str] = Field(default_factory=lambda: ["arxiv", "journals", "scirate"])
     arxiv: ArxivConfig = Field(default_factory=ArxivConfig)
     pubmed: PubmedConfig = Field(default_factory=PubmedConfig)
     journals: JournalConfig = Field(default_factory=JournalConfig)
+    scirate: ScirateConfig = Field(default_factory=ScirateConfig)
     summarizer: SummarizerConfig = Field(default_factory=SummarizerConfig)
     slack: SlackConfig = Field(default_factory=SlackConfig)
     notion: NotionConfig = Field(default_factory=NotionConfig)

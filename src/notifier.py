@@ -100,10 +100,14 @@ class SlackNotifier:
 
             # Metadata info
             meta_parts = []
-            if p.venue:
+            if p.venue and "scirate" not in p.venue.lower():
                 meta_parts.append(f"🏛️ *게재*: *{p.venue}*")
-            elif p.source == "arxiv":
+            elif p.source in ("arxiv", "scirate"):
                 meta_parts.append("📄 *출처*: arXiv")
+
+            if p.scites is not None and p.scites > 0:
+                scirate_url = p.scirate_url or f"https://scirate.com/arxiv/{p.id.replace('arxiv:', '')}"
+                meta_parts.append(f"🔥 <{scirate_url}|*SciRate {p.scites} Scites*>")
 
             meta_parts.append(f"👤 *저자*: {authors_str or 'N/A'}")
             meta_parts.append(f"📅 *일자*: {pub_date_str}")
@@ -180,6 +184,11 @@ class SlackNotifier:
                 footer_elements.append({
                     "type": "mrkdwn",
                     "text": f"🏷️ {tag_str}"
+                })
+            if p.scirate_url:
+                footer_elements.append({
+                    "type": "mrkdwn",
+                    "text": f"💬 <{p.scirate_url}|SciRate 토론>"
                 })
             if item.notion_url:
                 footer_elements.append({

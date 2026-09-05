@@ -94,5 +94,40 @@ class TestPaperBot(unittest.TestCase):
         self.assertEqual(sync.clean_id(url_id), "3b85ca12-c7ac-805f-b70b-cb9eaff150e7")
 
 
+    def test_scirate_parser(self):
+        from src.fetchers.scirate import ScirateFetcher, ScirateConfig
+        fetcher = ScirateFetcher(ScirateConfig(min_scites=2))
+        sample_html = '''
+        <ul class="papers">
+          <li class="paper tex2jax">
+            <button class="btn btn-default count">7</button>
+            <div class="title"><a href="/arxiv/2609.12345v1">Fault-Tolerant Quantum Computation with Magic States</a></div>
+            <div class="authors">
+              <a href="/search?q=au:Alice_A">Alice A</a>, <a href="/search?q=au:Bob_B">Bob B</a>
+            </div>
+            <div class="abstract">A new approach to magic state distillation in surface codes.</div>
+            <div class="uid">Sep 04 2026</div>
+            <div class="categories"><a href="/arxiv/quant-ph">quant-ph</a></div>
+          </li>
+          <li class="paper tex2jax">
+            <button class="btn btn-default count">1</button>
+            <div class="title"><a href="/arxiv/2609.99999">Low Scites Paper</a></div>
+            <div class="authors"><a href="/search?q=au:Charlie">Charlie</a></div>
+            <div class="abstract">Not enough scites.</div>
+          </li>
+        </ul>
+        '''
+        papers = fetcher._parse_html(sample_html)
+        self.assertEqual(len(papers), 2)
+        p1 = papers[0]
+        self.assertEqual(p1.id, "arxiv:2609.12345")
+        self.assertEqual(p1.title, "Fault-Tolerant Quantum Computation with Magic States")
+        self.assertEqual(p1.scites, 7)
+        self.assertEqual(p1.scirate_url, "https://scirate.com/arxiv/2609.12345")
+        self.assertIn("Alice A", p1.authors)
+        self.assertIn("quant-ph", p1.categories)
+
+
 if __name__ == "__main__":
     unittest.main()
+

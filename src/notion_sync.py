@@ -117,6 +117,8 @@ class NotionSync:
             authors_text += " et al."
 
         venue_name = p.venue or ("arXiv" if p.source == "arxiv" else "Preprint")
+        if p.scites and p.scites > 0:
+            venue_name = f"{venue_name} (🔥 SciRate {p.scites})"
         venue_name = venue_name[:100]
 
         clean_tags = []
@@ -302,6 +304,9 @@ class NotionSync:
         link_text = f"원문 바로가기: {p.url}"
         if p.pdf_url:
             link_text += f" | PDF: {p.pdf_url}"
+        if p.scirate_url:
+            scite_badge = f" ({p.scites} Scites)" if p.scites is not None else ""
+            link_text += f" | 🔥 SciRate 토론: {p.scirate_url}{scite_badge}"
         children.append({
             "object": "block",
             "type": "callout",

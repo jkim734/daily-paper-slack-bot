@@ -15,6 +15,8 @@ class Paper(BaseModel):
     categories: List[str] = Field(default_factory=list)
     source: str = "arxiv"
     venue: Optional[str] = None
+    scites: Optional[int] = None
+    scirate_url: Optional[str] = None
 
     def clean_title(self) -> str:
         return " ".join(self.title.replace("\n", " ").split())
