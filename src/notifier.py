@@ -126,20 +126,20 @@ class SlackNotifier:
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": f"💡 *한 줄 요약*: {item.one_line_summary}"
+                        "text": f"💡 *한 줄 요약*: *{item.one_line_summary}*"
                     }
                 })
 
-            # 5-section details or key points
+            # Details (간결하고 직관적인 개조식)
             detail_lines = []
             if item.problem:
                 detail_lines.append(f"• *풀려는 문제*: {item.problem}")
             if item.method:
                 detail_lines.append(f"• *접근 방법*: {item.method}")
             if item.result:
-                detail_lines.append(f"• *핵심 결과*: {item.result}")
+                detail_lines.append(f"• *핵심 성과*: {item.result}")
             if item.contribution:
-                detail_lines.append(f"• *기여점*: {item.contribution}")
+                detail_lines.append(f"• *의의/기여*: {item.contribution}")
 
             if not detail_lines and item.key_points:
                 detail_lines = [f"• {pt}" for pt in item.key_points]
@@ -152,6 +152,26 @@ class SlackNotifier:
                         "text": "\n".join(detail_lines)
                     }
                 })
+
+            # Key terms (핵심 용어 쏙쏙)
+            if item.key_terms:
+                term_texts = []
+                for kt in item.key_terms:
+                    if isinstance(kt, dict):
+                        t_name = kt.get("term", "").strip()
+                        t_def = kt.get("definition", "").strip()
+                        if t_name and t_def:
+                            term_texts.append(f"▫️ *{t_name}*: {t_def}")
+                    elif isinstance(kt, str) and kt.strip():
+                        term_texts.append(f"▫️ {kt.strip()}")
+                if term_texts:
+                    blocks.append({
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": "*📖 핵심 용어 쏙쏙:*\n" + "\n".join(term_texts)
+                        }
+                    })
 
             # Tags & Notion Link
             footer_elements = []
@@ -207,6 +227,13 @@ class SlackNotifier:
                 print(f"    - Summary: {s.one_line_summary}")
                 for kp in s.key_points:
                     print(f"      * {kp}")
+                if s.key_terms:
+                    print("      * 📖 핵심 용어 해설:")
+                    for kt in s.key_terms:
+                        if isinstance(kt, dict):
+                            print(f"        - {kt.get('term')}: {kt.get('definition')}")
+                        else:
+                            print(f"        - {kt}")
                 print(f"    - Tags: {' '.join(s.tags)}")
             print("=" * 60 + "\n")
             return True

@@ -61,6 +61,13 @@ class TestPaperBot(unittest.TestCase):
             paper=paper,
             relevance_score=9,
             one_line_summary="LLM의 추론 성능을 비약적으로 개선하는 새로운 기법 제안",
+            problem="복잡한 다단계 추론 시 오류가 누적됨",
+            method="사고 사슬 최적화 기법 적용",
+            result="벤치마크 15% 성능 향상",
+            contribution="추론 연산 비용 절감 및 정확도 제고",
+            key_terms=[
+                {"term": "사고 사슬(Chain-of-Thought)", "definition": "답을 바로 내지 않고 사람처럼 중간 생각 과정을 단계별로 거쳐 추론하는 기법"}
+            ],
             key_points=["연구 배경: 추론 한계", "핵심 기법: CoT 최적화", "주요 결과: 15% 성능 향상"],
             tags=["#LLM", "#Reasoning"]
         )
@@ -73,6 +80,7 @@ class TestPaperBot(unittest.TestCase):
         block_text = str(blocks)
         self.assertIn("Reasoning in LLMs", block_text)
         self.assertIn("LLM의 추론 성능을 비약적으로 개선", block_text)
+        self.assertIn("사고 사슬(Chain-of-Thought)", block_text)
 
     def test_notion_clean_id(self):
         from src.notion_sync import NotionSync

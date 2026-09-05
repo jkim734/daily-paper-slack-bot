@@ -259,24 +259,36 @@ class NotionSync:
             add_h2("💡 한 줄 요약")
             add_paragraph(summary.one_line_summary)
 
-        # 2. 풀려는 문제
+        # 2. 핵심 용어 사전 (쉬운 개념 풀이)
+        if summary.key_terms:
+            add_h2("📖 핵심 용어 사전")
+            for kt in summary.key_terms:
+                if isinstance(kt, dict):
+                    t_name = kt.get("term", "").strip()
+                    t_def = kt.get("definition", "").strip()
+                    if t_name and t_def:
+                        add_paragraph(f"▫️ **{t_name}**: {t_def}")
+                elif isinstance(kt, str) and kt.strip():
+                    add_paragraph(f"▫️ {kt.strip()}")
+
+        # 3. 풀려는 문제
         if summary.problem:
             add_h2("🎯 풀려는 문제")
             add_paragraph(summary.problem)
 
-        # 3. 접근 방법
+        # 4. 접근 방법
         if summary.method:
             add_h2("⚙️ 접근 방법")
             add_paragraph(summary.method)
 
-        # 4. 핵심 결과
+        # 5. 핵심 성과
         if summary.result:
-            add_h2("📊 핵심 결과")
+            add_h2("📊 핵심 성과")
             add_paragraph(summary.result)
 
-        # 5. 기여점 / 새로운 점
+        # 6. 의의 및 기여점
         if summary.contribution:
-            add_h2("✨ 기여점 / 새로운 점")
+            add_h2("✨ 의의 및 기여점")
             add_paragraph(summary.contribution)
 
         # Divider

@@ -11,11 +11,12 @@ from .config import SummarizerConfig
 class PaperSummary(BaseModel):
     paper: Paper
     relevance_score: int = Field(default=5, description="1-10 점수")
-    one_line_summary: str = Field(default="", description="1줄 핵심 요약 (20~50자)")
-    problem: str = Field(default="", description="풀려는 문제 (2~3문장)")
-    method: str = Field(default="", description="접근 방법 (2~4문장)")
-    result: str = Field(default="", description="핵심 결과 (2~3문장)")
-    contribution: str = Field(default="", description="기여점 / 새로운 점 (1~2문장)")
+    one_line_summary: str = Field(default="", description="1줄 핵심 요약 (20~40자)")
+    problem: str = Field(default="", description="풀려는 문제 (1~2문장)")
+    method: str = Field(default="", description="접근 방법 (1~2문장)")
+    result: str = Field(default="", description="핵심 결과 (1~2문장)")
+    contribution: str = Field(default="", description="기여점 / 의의 (1문장)")
+    key_terms: List[Dict[str, str]] = Field(default_factory=list, description="핵심 용어 및 쉬운 뜻 해설")
     key_points: List[str] = Field(default_factory=list, description="핵심 포인트 리스트")
     tags: List[str] = Field(default_factory=list, description="주요 키워드 태그")
     notion_url: Optional[str] = Field(default=None, description="노션 페이지 URL")
@@ -75,11 +76,21 @@ class Summarizer:
             )
         papers_str = "\n".join(papers_text)
 
-        lang_instruction = """【언어 원칙 - 필수 준수】
-1. 논문 제목(Title)은 원문 그대로 유지하되, 제목을 제외한 모든 내용(한 줄 요약, 풀려는 문제, 접근 방법, 핵심 결과, 기여점)은 반드시 100% 자연스럽고 전문적인 한국어로 작성하세요.
-2. 초록의 영어 문장을 그대로 복사하거나 남겨두지 말고, 한국 학계에서 통용되는 전문 용어로 완벽하게 번역 및 요약하세요.
-   - 예: Qubit -> 큐비트, Surface Code -> 표면 코드, Fault-Tolerant -> 결함 허용(내결함성), Syndrome -> 신드롬, Entanglement -> 얽힘
-3. 태그(tags) 역시 '#양자오류정정', '#표면코드', '#양자알고리즘' 등 한글 태그로 작성하세요.""" if self.config.language == "ko" else "Write all summaries in English based strictly on the abstract."
+        lang_instruction = """【언어 및 작성 원칙 - 필수 준수】
+1. 논문 제목(Title)은 원문 그대로 유지하되, 제목을 제외한 모든 요약, 해설, 용어 설명은 100% 자연스럽고 명쾌한 한국어로 작성하세요.
+2. 【가독성 및 간결성 극대화】:
+   - 길고 복잡한 만연체 문장을 철저히 배제하고, 읽는 즉시 핵심이 직관적으로 이해되도록 간결하고 명확한 문체로 작성하세요.
+   - 한 줄 요약: 논문의 핵심을 20~40자로 명쾌하게 압축 (군더더기 없이 본질 제시)
+   - 풀려는 문제: 기존 기술의 한계 및 병목을 1~2문장으로 간결 제시
+   - 접근 방법: 제안하는 핵심 아이디어와 해결 방식을 1~2문장으로 명확히 요약
+   - 핵심 결과: 가장 중요한 성과와 핵심 수치 위주로 1~2문장 정리
+   - 기여점: 이 연구가 분야에 미치는 실질적 의의를 1문장으로 임팩트 있게 정리
+3. 【핵심 용어 쏙쏙 해설 (key_terms) 필수】:
+   - 이 논문을 이해하기 위해 꼭 알아야 하는 핵심 개념 또는 전문 용어 2~3개를 선별하세요.
+   - 초심자나 인접 분야 연구자도 즉시 '아, 이게 이런 뜻이구나!' 하고 직관적으로 이해할 수 있도록 일상적 표현과 쉬운 비유를 곁들여 1문장씩 알기 쉽게 풀어주세요.
+   - 예: term: "표면 코드(Surface Code)", definition: "큐비트를 2차원 바둑판처럼 배열해 연산 중 생기는 오류를 실시간으로 찾아내고 고치는 대표적인 양자 오류정정 방식"
+   - 예: term: "매직 상태 증류(Magic State)", definition: "노이즈가 낀 보조 큐비트들을 정제하여 복잡한 고난도 양자 계산을 가능하게 해주는 고순도 상태를 만드는 과정"
+4. 태그(tags)는 '#양자오류정정', '#표면코드', '#QAOA' 등 핵심 한글 태그 3~5개로 작성하세요.""" if self.config.language == "ko" else "Write all summaries in English based strictly on the abstract."
 
         return f"""당신은 세계 최고 수준의 양자컴퓨팅 및 양자정보 전문 연구원입니다.
 아래 제공된 최근 논문 목록 중에서 {interest_prompt}에 가장 적합하고 가치 있는 논문을 엄선하여 최소 {min_k}편에서 최대 {max_k}편 선별하고, 핵심을 명확하게 요약해 주세요. (가용한 후보 논문이 충분하다면 최대 {max_k}편을 선별하고, 적어도 {min_k}편 이상을 포함해 주세요.)
@@ -98,11 +109,21 @@ class Summarizer:
   {{
     "paper_id": "논문 ID (예: arxiv:... 또는 doi:...)",
     "relevance_score": 1부터 10 사이의 정수 (위 엄선 기준에 따른 점수),
-    "one_line_summary": "100% 한국어로 작성: 이 논문이 무엇을 하는 논문인지 한눈에 알 수 있는 한 문장 요약 (20~50자)",
-    "problem": "100% 한국어로 작성: 기존 연구의 한계 및 이 논문에서 다루는 핵심 문제 또는 연구 공백 (2~3문장)",
-    "method": "100% 한국어로 작성: 어떻게 해결했는지 제안하는 모델, 양자 알고리즘, 오류정정 코드, 회로 설계, 실험 방법 등 (2~4문장)",
-    "result": "100% 한국어로 작성: 무엇을 발견/달성했는지 실험 결과 및 구체적 수치 포함 (2~3문장)",
-    "contribution": "100% 한국어로 작성: 기존 대비 무엇이 다르고 중요한지 주요 기여점 및 혁신성 (1~2문장)",
+    "one_line_summary": "핵심을 명쾌하게 압축한 직관적 1문장 (20~40자)",
+    "problem": "기존 연구의 한계/병목 (1~2문장으로 간결하게)",
+    "method": "제안하는 핵심 아이디어/해결법 (1~2문장으로 명확하게)",
+    "result": "핵심 성과 및 주요 수치 (1~2문장으로 압축)",
+    "contribution": "이 논문의 핵심 의의 및 가치 (1문장)",
+    "key_terms": [
+      {{
+        "term": "핵심 용어 1",
+        "definition": "초심자도 바로 이해할 수 있는 쉽고 직관적인 1문장 뜻 풀이"
+      }},
+      {{
+        "term": "핵심 용어 2",
+        "definition": "초심자도 바로 이해할 수 있는 쉽고 직관적인 1문장 뜻 풀이"
+      }}
+    ],
     "tags": ["#양자오류정정", "#표면코드", "#결함허용"]
   }}
 ]
@@ -183,12 +204,30 @@ class Summarizer:
                 method = item.get("method", "")
                 result = item.get("result", "")
                 contrib = item.get("contribution", "")
+                
+                # Parse key_terms
+                raw_terms = item.get("key_terms", [])
+                formatted_terms = []
+                if isinstance(raw_terms, list):
+                    for kt in raw_terms:
+                        if isinstance(kt, dict) and kt.get("term"):
+                            formatted_terms.append({
+                                "term": str(kt.get("term", "")).strip(),
+                                "definition": str(kt.get("definition", "")).strip()
+                            })
+                        elif isinstance(kt, str) and ":" in kt:
+                            parts = kt.split(":", 1)
+                            formatted_terms.append({
+                                "term": parts[0].strip(),
+                                "definition": parts[1].strip()
+                            })
+
                 key_points = item.get("key_points") or []
                 if not key_points and (problem or method or result or contrib):
                     if problem: key_points.append(f"풀려는 문제: {problem}")
                     if method: key_points.append(f"접근 방법: {method}")
                     if result: key_points.append(f"핵심 결과: {result}")
-                    if contrib: key_points.append(f"기여점: {contrib}")
+                    if contrib: key_points.append(f"의의/기여: {contrib}")
 
                 summary = PaperSummary(
                     paper=p,
@@ -198,6 +237,7 @@ class Summarizer:
                     method=method,
                     result=result,
                     contribution=contrib,
+                    key_terms=formatted_terms,
                     key_points=key_points,
                     tags=item.get("tags", [])
                 )
@@ -222,10 +262,14 @@ class Summarizer:
             key_points = [
                 f"풀려는 문제: {problem[:150]}...",
                 f"접근 방법: {method[:150]}...",
-                f"핵심 결과: {result[:150]}..."
+                f"핵심 성과: {result[:150]}..."
             ]
             if contrib:
-                key_points.append(f"기여점: {contrib[:150]}...")
+                key_points.append(f"의의/기여: {contrib[:150]}...")
+
+            mock_terms = [
+                {"term": "양자 컴퓨팅", "definition": "양자의 중첩과 얽힘 현상을 이용해 특정 고난도 계산을 초고속으로 수행하는 차세대 기술"}
+            ]
 
             tags = [f"#{cat}" for cat in p.categories[:3]] or ["#양자컴퓨팅", "#연구"]
             results.append(PaperSummary(
@@ -236,6 +280,7 @@ class Summarizer:
                 method=method,
                 result=result,
                 contribution=contrib,
+                key_terms=mock_terms,
                 key_points=key_points,
                 tags=tags
             ))
