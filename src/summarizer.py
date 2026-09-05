@@ -151,14 +151,27 @@ class Summarizer:
         else:
             clean_json = raw_text.strip()
 
+        def safe_loads(text: str):
+            try:
+                return json.loads(text, strict=False)
+            except Exception:
+                # Sanitize unescaped LaTeX backslashes (\alpha, \mathcal, \approx, \rho, etc.)
+                sanitized = re.sub(r"\\(?![\"\\/bfnrt]|u[0-9a-fA-F]{4})", r"\\\\", text)
+                return json.loads(sanitized, strict=False)
+
         try:
-            items = json.loads(clean_json)
-        except Exception:
+            items = safe_loads(clean_json)
+        except Exception as e:
             # Try to locate array bracket
             bracket_match = re.search(r"\[\s*\{[\s\S]*\}\s*\]", clean_json)
             if bracket_match:
-                items = json.loads(bracket_match.group(0))
+                try:
+                    items = safe_loads(bracket_match.group(0))
+                except Exception as inner_e:
+                    print(f"[Summarizer] Failed to parse JSON array: {inner_e}")
+                    return []
             else:
+                print(f"[Summarizer] No JSON array found in response: {e}")
                 return []
 
         summaries: List[PaperSummary] = []
