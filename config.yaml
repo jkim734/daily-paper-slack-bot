@@ -1,0 +1,97 @@
+# ==============================================================================
+# Daily Quantum Research Paper Slack Bot Configuration
+# ==============================================================================
+
+# 1. 활성화할 논문 수집 소스 ('arxiv', 'journals')
+sources:
+  - arxiv
+  - journals
+
+# 2. arXiv 수집 설정 (양자 연구 분야 프리프린트)
+arxiv:
+  categories:
+    - quant-ph
+    - cs.ET
+    - cs.LG
+
+  keywords:
+    - "quantum computing"
+    - "quantum machine learning"
+    - "quantum algorithm"
+    - "quantum error correction"
+    - "fault-tolerant quantum"
+    - "variational quantum"
+    - "surface code"
+    - "quantum circuit"
+
+  max_results: 30
+  lookback_days: 3
+
+# 3. 최고 권위 피어리뷰 저널(Peer-Reviewed Journals) 수집 설정 (OpenAlex 연동)
+journals:
+  # 모니터링할 정상급 저널 목록
+  venues:
+    - "Nature"
+    - "Science"
+    - "Nature Physics"
+    - "Nature Electronics"
+    - "Physical Review Letters"
+    - "Physical Review A"
+    - "Physical Review Research"
+    - "Physical Review X"
+    - "Quantum"
+    - "IEEE Transactions on Quantum Engineering"
+    - "ACM Transactions on Quantum Computing"
+    - "Quantum Information Processing"
+    - "Quantum Information & Computation"
+    - "npj Quantum Information"
+    - "International Journal of Quantum Information"
+
+  # 저널 내 양자 분야 검색 키워드
+  keywords:
+    - "quantum computing"
+    - "quantum machine learning"
+    - "quantum algorithm"
+    - "quantum error correction"
+    - "qubit"
+    - "surface code"
+    - "fault-tolerant"
+
+  # 저널 후보 논문 탐색 수
+  max_results: 30
+
+  # 저널 발행 주기(주간/월간)를 감안한 최근 N일 검색 (기본 7일)
+  lookback_days: 7
+
+# 4. LLM 요약기 설정 (Google Gemini)
+summarizer:
+  provider: gemini
+  model: gemini-2.5-flash
+
+  # 하루 최종 추천 및 요약할 논문 수 범위 (최소 5편 ~ 최대 10편)
+  min_k: 5
+  max_k: 10
+  top_k: 10
+
+  language: ko
+
+  research_interest: >
+    양자컴퓨팅(Quantum Computing), 양자머신러닝(Quantum Machine Learning / QML),
+    양자알고리즘(Quantum Algorithms: VQE, QAOA, 양자 위상 추정 등),
+    양자오류정정(Quantum Error Correction / QEC: 표면 코드(Surface Codes), 결함 허용(Fault-Tolerant) 양자 연산, 신드롬 측정)
+
+# 5. 슬랙 메시지 설정
+slack:
+  bot_name: "Quantum Paper Bot ⚛️"
+  bot_icon_emoji: ":atom_symbol:"
+  header_title: "오늘의 양자 연구 논문 브리핑"
+
+# 6. 노션(Notion) 데이터베이스 동시 정리 설정
+notion:
+  enabled: true
+  database_id: ""  # 노션 데이터베이스 ID (또는 .env의 NOTION_DATABASE_ID 사용)
+  default_status: "시작 전"  # 기본 상태 (시작 전 / 읽는중 / 완료 / 보류)
+
+# 7. 저장소 설정 (중복 발송 방지용 SQLite)
+storage:
+  db_path: "data/history.db"
