@@ -42,6 +42,7 @@ def main():
 
     notifier = SlackNotifier(config.slack_webhook_url, config.slack)
     notion_sync = NotionSync(config.notion_api_key, config.notion.database_id, config.notion)
+    print(f"[Main] Notion Integration: {'Enabled' if config.notion.enabled else 'Disabled'} (Configured: {notion_sync.is_configured()})")
 
     # 1. Connection Tests
     if args.test_slack:
@@ -149,7 +150,11 @@ def main():
         if notion_sync.is_configured():
             notion_sync.sync_all(summaries)
         else:
-            print("[Main] Notion sync skipped: NOTION_API_KEY or NOTION_DATABASE_ID not set.")
+            print("[Main] ⚠️ Notion sync skipped:")
+            if not config.notion_api_key:
+                print("       ❌ NOTION_API_KEY is not set. (GitHub Secrets에 NOTION_API_KEY 등록 필요)")
+            if not (config.notion.database_id or config.notion_database_id):
+                print("       ❌ NOTION_DATABASE_ID is not set.")
     elif config.notion.enabled and args.dry_run:
         print(f"[Main] (Dry Run) Would sync {len(summaries)} papers to Notion Database.")
 

@@ -89,7 +89,7 @@ slack:
 # 6. 노션(Notion) 데이터베이스 동시 정리 설정
 notion:
   enabled: true
-  database_id: ""  # 노션 데이터베이스 ID (또는 .env의 NOTION_DATABASE_ID 사용)
+  database_id: "ff049a9997454275b0f945dc1c439171"  # 노션 데이터베이스 ID
   default_status: "읽을 예정"  # 기본 상태 (읽을 예정 / 읽는 중 / 완료)
 
 # 7. 저장소 설정 (중복 발송 방지용 SQLite)
