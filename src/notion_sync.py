@@ -20,9 +20,18 @@ class NotionSync:
             "Notion-Version": self.NOTION_API_VERSION,
             "Content-Type": "application/json"
         }
+        self._schema_cache: Optional[Dict[str, Any]] = None
 
     def is_configured(self) -> bool:
         return bool(self.api_key and self.database_id)
+
+    def clean_id(self, id_str: str) -> str:
+        """Extracts and formats 32-char Notion UUID from any raw ID or full Notion URL."""
+        match = re.search(r'([0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})', id_str.strip())
+        if match:
+            clean = match.group(1).replace("-", "")
+            return f"{clean[0:8]}-{clean[8:12]}-{clean[12:16]}-{clean[16:20]}-{clean[20:32]}"
+        return id_str.strip()
 
     def resolve_database_id(self) -> Optional[str]:
         """Resolves database ID, automatically detecting an inline child database if a page ID was provided."""
@@ -49,6 +58,28 @@ class NotionSync:
             pass
         return target_id
 
+    def get_database_schema(self) -> Dict[str, Any]:
+        """Fetches and caches database properties schema to dynamically adapt to any user column types."""
+        if self._schema_cache is not None:
+            return self._schema_cache
+
+        db_id = self.resolve_database_id()
+        if not db_id:
+            return {}
+
+        try:
+            res = requests.get(f"{self.BASE_URL}/databases/{db_id}", headers=self.headers, timeout=15)
+            if res.status_code == 200:
+                self._schema_cache = res.json().get("properties", {})
+                return self._schema_cache
+            else:
+                print(f"[NotionSync] ⚠️ DB 스키마 조회 실패 ({res.status_code}): {res.text[:150]}")
+        except Exception as e:
+            print(f"[NotionSync] ⚠️ DB 스키마 조회 예외: {e}")
+
+        self._schema_cache = {}
+        return self._schema_cache
+
     def test_connection(self) -> bool:
         """Verifies connection to Notion and validates database access."""
         if not self.is_configured():
@@ -67,6 +98,8 @@ class NotionSync:
                 db_data = res.json()
                 title = db_data.get("title", [{}])[0].get("plain_text", "Untitled DB")
                 print(f"[NotionSync] ✅ Successfully connected to Notion Database: '{title}' ({db_id})")
+                props = db_data.get("properties", {})
+                print(f"[NotionSync] 📋 Detected columns: {', '.join(props.keys())}")
                 return True
             else:
                 print(f"[NotionSync] ❌ Notion API error ({res.status_code}): {res.text}")
@@ -75,19 +108,8 @@ class NotionSync:
             print(f"[NotionSync] ❌ Error connecting to Notion: {e}")
             return False
 
-    def clean_id(self, id_str: str) -> str:
-        """Extracts and formats 32-char Notion UUID from any raw ID or full Notion URL."""
-        match = re.search(r'([0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})', id_str.strip())
-        if match:
-            clean = match.group(1).replace("-", "")
-            return f"{clean[0:8]}-{clean[8:12]}-{clean[12:16]}-{clean[16:20]}-{clean[20:32]}"
-        return id_str.strip()
-
-    def sync_paper(self, summary: PaperSummary) -> Optional[str]:
-        """Creates a page in the Notion database for a paper summary and returns page URL."""
-        if not self.is_configured():
-            return None
-
+    def _build_properties(self, summary: PaperSummary, schema: Dict[str, Any]) -> Dict[str, Any]:
+        """Dynamically creates Notion page properties based on actual column types in user database."""
         p = summary.paper
         pub_year = p.published.year if p.published else 2026
         authors_text = ", ".join(p.authors[:3])
@@ -95,41 +117,120 @@ class NotionSync:
             authors_text += " et al."
 
         venue_name = p.venue or ("arXiv" if p.source == "arxiv" else "Preprint")
-        # Notion select option max length 100
         venue_name = venue_name[:100]
 
-        # Clean tags (alphanumeric and Korean, remove '#')
         clean_tags = []
         for t in summary.tags:
             t_clean = t.replace("#", "").strip()
             if t_clean and len(t_clean) <= 50:
                 clean_tags.append({"name": t_clean})
 
-        # Base properties matching the reference guide
-        properties: Dict[str, Any] = {
-            "제목": {
-                "title": [{"text": {"content": p.clean_title()[:2000]}}]
-            },
-            "저자": {
-                "rich_text": [{"text": {"content": authors_text[:2000]}}]
-            },
-            "출판연도": {
-                "number": pub_year
-            },
-            "저널": {
-                "select": {"name": venue_name}
-            },
-            "DOI": {
-                "url": p.url
-            }
+        properties: Dict[str, Any] = {}
+
+        # 1. Title property (find column of type 'title')
+        title_prop_name = None
+        for name, info in schema.items():
+            if info.get("type") == "title":
+                title_prop_name = name
+                break
+        title_prop_name = title_prop_name or "제목"
+        properties[title_prop_name] = {
+            "title": [{"text": {"content": p.clean_title()[:2000]}}]
         }
 
-        if clean_tags:
-            properties["분야/주제"] = {"multi_select": clean_tags[:5]}
+        # Helper to match property name case-insensitively or by alias
+        def find_prop(aliases: List[str]) -> Optional[tuple[str, Dict[str, Any]]]:
+            for alias in aliases:
+                for name, info in schema.items():
+                    if name.lower() == alias.lower():
+                        return name, info
+            return None
 
-        # Status property ("시작 전")
-        status_val = self.config.default_status if self.config else "시작 전"
-        properties["상태"] = {"status": {"name": status_val}}
+        # 2. 저자 (Authors)
+        author_match = find_prop(["저자", "Author", "Authors"])
+        if author_match:
+            name, info = author_match
+            if info.get("type") == "rich_text":
+                properties[name] = {"rich_text": [{"text": {"content": authors_text[:2000]}}]}
+
+        # 3. 출판연도 (Year)
+        year_match = find_prop(["출판연도", "Year", "연도", "Publication Year"])
+        if year_match:
+            name, info = year_match
+            p_type = info.get("type")
+            if p_type == "number":
+                properties[name] = {"number": pub_year}
+            elif p_type == "rich_text":
+                properties[name] = {"rich_text": [{"text": {"content": str(pub_year)}}]}
+            elif p_type == "select":
+                properties[name] = {"select": {"name": str(pub_year)}}
+
+        # 4. 저널 (Journal / Venue)
+        journal_match = find_prop(["저널", "Journal", "Venue", "학술지"])
+        if journal_match:
+            name, info = journal_match
+            p_type = info.get("type")
+            if p_type == "rich_text":
+                properties[name] = {"rich_text": [{"text": {"content": venue_name}}]}
+            elif p_type == "select":
+                properties[name] = {"select": {"name": venue_name}}
+
+        # 5. DOI / URL
+        doi_match = find_prop(["DOI", "URL", "링크", "Link"])
+        if doi_match:
+            name, info = doi_match
+            p_type = info.get("type")
+            if p_type == "url":
+                properties[name] = {"url": p.url}
+            elif p_type == "rich_text":
+                properties[name] = {"rich_text": [{"text": {"content": p.url}}]}
+
+        # 6. 분야/주제 (Category / Tags)
+        tag_match = find_prop(["분야/주제", "태그", "주제", "Tags", "Category"])
+        if tag_match and clean_tags:
+            name, info = tag_match
+            p_type = info.get("type")
+            if p_type == "multi_select":
+                properties[name] = {"multi_select": clean_tags[:5]}
+            elif p_type == "rich_text":
+                properties[name] = {"rich_text": [{"text": {"content": ", ".join(t["name"] for t in clean_tags[:5])}}]}
+
+        # 7. 상태 (Status)
+        status_match = find_prop(["상태", "Status"])
+        if status_match:
+            name, info = status_match
+            p_type = info.get("type")
+            if p_type == "status":
+                status_options = info.get("status", {}).get("options", [])
+                option_names = [opt.get("name") for opt in status_options if opt.get("name")]
+                # Priority: configured status -> "읽을 예정" -> "시작 전" -> first option
+                target_status = self.config.default_status if self.config else "읽을 예정"
+                if target_status not in option_names:
+                    # fallback to first option or "읽을 예정"
+                    for candidate in ["읽을 예정", "시작 전", "To-do", "Not started"]:
+                        if candidate in option_names:
+                            target_status = candidate
+                            break
+                    else:
+                        target_status = option_names[0] if option_names else "읽을 예정"
+                properties[name] = {"status": {"name": target_status}}
+            elif p_type == "select":
+                select_options = [opt.get("name") for opt in info.get("select", {}).get("options", [])]
+                target_status = self.config.default_status if self.config else "읽을 예정"
+                if select_options and target_status not in select_options:
+                    target_status = select_options[0]
+                properties[name] = {"select": {"name": target_status}}
+
+        return properties
+
+    def sync_paper(self, summary: PaperSummary) -> Optional[str]:
+        """Creates a page in the Notion database for a paper summary and returns page URL."""
+        if not self.is_configured():
+            return None
+
+        p = summary.paper
+        schema = self.get_database_schema()
+        properties = self._build_properties(summary, schema)
 
         # Build Page Children Blocks (Rich 5-section layout)
         children = []
@@ -213,18 +314,24 @@ class NotionSync:
                 summary.notion_url = page_url
                 return page_url
             else:
-                # If status property caused error (e.g. user created as select instead of status), retry without status or with select
-                if "status" in res.text.lower():
-                    properties["상태"] = {"select": {"name": status_val}}
-                    payload["properties"] = properties
-                    retry_res = requests.post(f"{self.BASE_URL}/pages", headers=self.headers, json=payload, timeout=25)
-                    if retry_res.status_code in (200, 201):
-                        page_url = retry_res.json().get("url", "")
-                        summary.notion_url = page_url
-                        return page_url
-
-                print(f"[NotionSync] Failed to insert page for '{p.clean_title()[:40]}...': {res.status_code} - {res.text[:200]}")
-                return None
+                err_text = res.text
+                print(f"[NotionSync] ⚠️ Failed initial page insert: {res.status_code} - {err_text[:200]}")
+                # Fallback: Retry with minimal safe properties (title only) to ensure user never loses content
+                title_key = next((k for k, v in properties.items() if "title" in v), "제목")
+                fallback_payload = {
+                    "parent": {"database_id": db_id},
+                    "properties": {title_key: properties[title_key]},
+                    "children": children
+                }
+                retry_res = requests.post(f"{self.BASE_URL}/pages", headers=self.headers, json=fallback_payload, timeout=25)
+                if retry_res.status_code in (200, 201):
+                    page_url = retry_res.json().get("url", "")
+                    summary.notion_url = page_url
+                    print(f"[NotionSync] ✅ Page created via fallback for '{p.clean_title()[:40]}...'")
+                    return page_url
+                else:
+                    print(f"[NotionSync] ❌ Fallback also failed: {retry_res.status_code} - {retry_res.text[:200]}")
+                    return None
         except Exception as e:
             print(f"[NotionSync] Request exception: {e}")
             return None

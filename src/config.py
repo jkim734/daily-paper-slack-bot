@@ -50,7 +50,7 @@ class SlackConfig(BaseModel):
 class NotionConfig(BaseModel):
     enabled: bool = True
     database_id: Optional[str] = None
-    default_status: str = "시작 전"
+    default_status: str = "읽을 예정"
 
 
 class StorageConfig(BaseModel):

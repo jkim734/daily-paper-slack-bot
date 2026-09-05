@@ -90,7 +90,7 @@ slack:
 notion:
   enabled: true
   database_id: ""  # 노션 데이터베이스 ID (또는 .env의 NOTION_DATABASE_ID 사용)
-  default_status: "시작 전"  # 기본 상태 (시작 전 / 읽는중 / 완료 / 보류)
+  default_status: "읽을 예정"  # 기본 상태 (읽을 예정 / 읽는 중 / 완료)
 
 # 7. 저장소 설정 (중복 발송 방지용 SQLite)
 storage:
