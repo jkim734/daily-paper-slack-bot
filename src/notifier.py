@@ -19,7 +19,6 @@ class SlackNotifier:
 
         payload = {
             "username": self.config.bot_name,
-            "icon_emoji": self.config.bot_icon_emoji,
             "blocks": [
                 {
                     "type": "header",
@@ -47,6 +46,7 @@ class SlackNotifier:
                 }
             ]
         }
+        self._apply_icon(payload)
 
         return self._post_payload(payload)
 
@@ -245,13 +245,20 @@ class SlackNotifier:
             chunk = blocks[i:i + chunk_size]
             payload = {
                 "username": self.config.bot_name,
-                "icon_emoji": self.config.bot_icon_emoji,
                 "blocks": chunk
             }
+            self._apply_icon(payload)
             if not self._post_payload(payload):
                 success = False
 
         return success
+
+    def _apply_icon(self, payload: Dict[str, Any]):
+        """Sets icon_url if configured, otherwise falls back to icon_emoji."""
+        if getattr(self.config, "bot_icon_url", None):
+            payload["icon_url"] = self.config.bot_icon_url
+        elif getattr(self.config, "bot_icon_emoji", None):
+            payload["icon_emoji"] = self.config.bot_icon_emoji
 
     def _post_payload(self, payload: Dict[str, Any]) -> bool:
         try:

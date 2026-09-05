@@ -44,6 +44,7 @@ class SummarizerConfig(BaseModel):
 class SlackConfig(BaseModel):
     bot_name: str = "Paper Briefing Bot 📚"
     bot_icon_emoji: str = ":newspaper:"
+    bot_icon_url: Optional[str] = None
     header_title: str = "오늘의 연구 논문 브리핑"
 
 

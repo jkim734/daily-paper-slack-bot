@@ -83,7 +83,8 @@ summarizer:
 # 5. 슬랙 메시지 설정
 slack:
   bot_name: "Quantum Paper Bot ⚛️"
-  bot_icon_emoji: ":atom_symbol:"
+  bot_icon_emoji: ":atom_symbol:"  # 슬랙 이모지 아이콘 (예: :atom_symbol:, :robot_face:, :crystal_ball:, :books: 등)
+  bot_icon_url: ""  # 이미지 URL을 아이콘으로 쓸 경우 여기에 URL 입력 (입력 시 bot_icon_emoji 대신 우선 적용)
   header_title: "오늘의 양자 연구 논문 브리핑"
 
 # 6. 노션(Notion) 데이터베이스 동시 정리 설정
