@@ -33,7 +33,7 @@ class JournalConfig(BaseModel):
 
 class SummarizerConfig(BaseModel):
     provider: str = "gemini"  # 'gemini' or 'openai'
-    model: str = "gemini-2.5-flash"
+    model: str = "gemini-3.6-flash"
     min_k: int = 5
     max_k: int = 10
     top_k: int = 10

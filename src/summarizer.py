@@ -114,8 +114,8 @@ class Summarizer:
     def _call_gemini(self, prompt: str) -> str:
         from google import genai
         client = genai.Client(api_key=self.gemini_api_key)
-        # Using configured model, e.g., gemini-2.5-flash
-        model_name = self.config.model if self.config.model else "gemini-2.5-flash"
+        # Using configured model, e.g., gemini-3.6-flash
+        model_name = self.config.model if self.config.model else "gemini-3.6-flash"
         response = client.models.generate_content(
             model=model_name,
             contents=prompt,

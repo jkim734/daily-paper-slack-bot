@@ -66,7 +66,7 @@ journals:
 # 4. LLM 요약기 설정 (Google Gemini)
 summarizer:
   provider: gemini
-  model: gemini-2.5-flash
+  model: gemini-3.6-flash
 
   # 하루 최종 추천 및 요약할 논문 수 범위 (최소 5편 ~ 최대 10편)
   min_k: 5
