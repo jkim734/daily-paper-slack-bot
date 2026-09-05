@@ -85,11 +85,12 @@ class Summarizer:
    - 접근 방법: 제안하는 핵심 아이디어와 해결 방식을 1~2문장으로 명확히 요약
    - 핵심 결과: 가장 중요한 성과와 핵심 수치 위주로 1~2문장 정리
    - 기여점: 이 연구가 분야에 미치는 실질적 의의를 1문장으로 임팩트 있게 정리
-3. 【핵심 용어 쏙쏙 해설 (key_terms) 필수】:
+3. 【핵심 용어 쏙쏙 해설 (key_terms) 필수 - 용어명은 영문 표기】:
    - 이 논문을 이해하기 위해 꼭 알아야 하는 핵심 개념 또는 전문 용어 2~3개를 선별하세요.
-   - 초심자나 인접 분야 연구자도 즉시 '아, 이게 이런 뜻이구나!' 하고 직관적으로 이해할 수 있도록 일상적 표현과 쉬운 비유를 곁들여 1문장씩 알기 쉽게 풀어주세요.
-   - 예: term: "표면 코드(Surface Code)", definition: "큐비트를 2차원 바둑판처럼 배열해 연산 중 생기는 오류를 실시간으로 찾아내고 고치는 대표적인 양자 오류정정 방식"
-   - 예: term: "매직 상태 증류(Magic State)", definition: "노이즈가 낀 보조 큐비트들을 정제하여 복잡한 고난도 양자 계산을 가능하게 해주는 고순도 상태를 만드는 과정"
+   - 용어명(term)은 굳이 한글로 번역하거나 병기하지 말고 원래의 영문(English) 그대로 간결하게 작성하세요 (예: "Surface Code", "Magic State Distillation", "Floquet Code", "Quantum Singleton Bound", "QAOA" 등).
+   - 뜻 설명(definition)은 초심자나 인접 분야 연구자도 즉시 직관적으로 이해할 수 있도록 쉽고 친절한 한국어로 1문장씩 풀어주세요.
+   - 예: term: "Surface Code", definition: "큐비트를 2차원 바둑판처럼 배열해 연산 중 생기는 오류를 실시간으로 찾아내고 고치는 대표적인 양자 오류정정 기술"
+   - 예: term: "Magic State Distillation", definition: "노이즈가 낀 보조 큐비트들을 정제하여 복잡한 고난도 양자 계산을 가능하게 해주는 고순도 상태를 만드는 과정"
 4. 태그(tags)는 '#양자오류정정', '#표면코드', '#QAOA' 등 핵심 한글 태그 3~5개로 작성하세요.""" if self.config.language == "ko" else "Write all summaries in English based strictly on the abstract."
 
         return f"""당신은 세계 최고 수준의 양자컴퓨팅 및 양자정보 전문 연구원입니다.
@@ -116,12 +117,12 @@ class Summarizer:
     "contribution": "이 논문의 핵심 의의 및 가치 (1문장)",
     "key_terms": [
       {{
-        "term": "핵심 용어 1",
-        "definition": "초심자도 바로 이해할 수 있는 쉽고 직관적인 1문장 뜻 풀이"
+        "term": "Surface Code",
+        "definition": "초심자도 바로 이해할 수 있는 쉽고 직관적인 1문장 뜻 풀이 (한국어)"
       }},
       {{
-        "term": "핵심 용어 2",
-        "definition": "초심자도 바로 이해할 수 있는 쉽고 직관적인 1문장 뜻 풀이"
+        "term": "Magic State Distillation",
+        "definition": "초심자도 바로 이해할 수 있는 쉽고 직관적인 1문장 뜻 풀이 (한국어)"
       }}
     ],
     "tags": ["#양자오류정정", "#표면코드", "#결함허용"]
@@ -268,7 +269,7 @@ class Summarizer:
                 key_points.append(f"의의/기여: {contrib[:150]}...")
 
             mock_terms = [
-                {"term": "양자 컴퓨팅", "definition": "양자의 중첩과 얽힘 현상을 이용해 특정 고난도 계산을 초고속으로 수행하는 차세대 기술"}
+                {"term": "Quantum Computing", "definition": "양자의 중첩과 얽힘 현상을 이용해 특정 고난도 계산을 초고속으로 수행하는 차세대 기술"}
             ]
 
             tags = [f"#{cat}" for cat in p.categories[:3]] or ["#양자컴퓨팅", "#연구"]
