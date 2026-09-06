@@ -143,31 +143,54 @@ class Summarizer:
         import time
         from google import genai
         client = genai.Client(api_key=self.gemini_api_key)
-        primary_model = self.config.model if self.config.model else "gemini-3.6-flash"
-        fallback_models = [primary_model, "gemini-3.5-flash", "gemini-flash-latest"]
-        candidate_models = list(dict.fromkeys(fallback_models))
+
+        # Strict hierarchy: 3.8-flash -> 3.7-flash -> 3.6-flash -> 3.5-flash -> flash-latest
+        hierarchy = [
+            "gemini-3.8-flash",
+            "gemini-3.7-flash",
+            "gemini-3.6-flash",
+            "gemini-3.5-flash",
+            "gemini-flash-latest"
+        ]
+
+        # Respect user configured model if custom, else maintain hierarchy
+        if self.config.model and self.config.model not in hierarchy:
+            hierarchy.insert(0, self.config.model)
 
         last_error = None
-        for model_name in candidate_models:
-            for attempt in range(1, 4):
+        for i, model_name in enumerate(hierarchy):
+            next_model = hierarchy[i + 1] if i + 1 < len(hierarchy) else "None"
+            print(f"[Summarizer] 🚀 Attempting summary with model: '{model_name}'...")
+
+            for attempt in range(1, 3):
                 try:
                     response = client.models.generate_content(
                         model=model_name,
                         contents=prompt,
                     )
                     if response and response.text:
+                        print(f"[Summarizer] ✅ Successfully generated summary using '{model_name}'.")
                         return response.text
                 except Exception as e:
                     last_error = e
                     err_str = str(e)
-                    print(f"[Summarizer] ⚠️ Gemini API attempt {attempt} on '{model_name}' failed: {err_str[:120]}")
-                    if "503" in err_str or "UNAVAILABLE" in err_str or "429" in err_str:
-                        time.sleep(attempt * 3)
-                        continue
+                    # If 429 Quota Exceeded (RPD reached), immediately switch to next model without wasting retries
+                    if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "Quota exceeded" in err_str:
+                        print(f"[Summarizer] ⚠️ '{model_name}' 할당량 소진 (429 Quota Exceeded). 차상위 모델 '{next_model}'(으)로 즉시 전환합니다.")
+                        break
+                    elif "503" in err_str or "UNAVAILABLE" in err_str:
+                        print(f"[Summarizer] ⚠️ '{model_name}' 일시적 서버 지연(503) (attempt {attempt}/2).")
+                        if attempt < 2:
+                            time.sleep(2)
+                            continue
+                        else:
+                            print(f"[Summarizer] ⚠️ '{model_name}' 재시도 후에도 불가. 차상위 모델 '{next_model}'(으)로 전환합니다.")
+                            break
                     else:
-                        break # Try next fallback model
+                        print(f"[Summarizer] ⚠️ '{model_name}' 에러 ({err_str[:100]}). 차상위 모델 '{next_model}'(으)로 전환합니다.")
+                        break
 
-        raise RuntimeError(f"All Gemini models and retries failed. Last error: {last_error}")
+        raise RuntimeError(f"All Gemini models in hierarchy ({', '.join(hierarchy)}) failed. Last error: {last_error}")
 
     def _call_openai(self, prompt: str) -> str:
         headers = {
