@@ -307,6 +307,16 @@ class NotionSync:
         if p.scirate_url:
             scite_badge = f" ({p.scites} Scites)" if p.scites is not None else ""
             link_text += f" | 🔥 SciRate 토론: {p.scirate_url}{scite_badge}"
+
+        raw_doi = ""
+        if "doi.org/" in p.url:
+            raw_doi = p.url.split("doi.org/")[-1].strip()
+        elif p.id.startswith("doi:"):
+            raw_doi = p.id.replace("doi:", "").strip()
+
+        if raw_doi:
+            link_text += f" | 🏛️ 성균관대 학술정보관 검색: https://lib.skku.edu/search?query={raw_doi}"
+
         children.append({
             "object": "block",
             "type": "callout",

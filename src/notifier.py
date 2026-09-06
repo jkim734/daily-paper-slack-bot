@@ -114,6 +114,17 @@ class SlackNotifier:
             if p.pdf_url:
                 meta_parts.append(f"🔗 <{p.pdf_url}|PDF 원문>")
 
+            # SKKU Library direct link for DOI papers
+            raw_doi = ""
+            if "doi.org/" in p.url:
+                raw_doi = p.url.split("doi.org/")[-1].strip()
+            elif p.id.startswith("doi:"):
+                raw_doi = p.id.replace("doi:", "").strip()
+
+            if raw_doi:
+                skku_url = f"https://lib.skku.edu/search?query={raw_doi}"
+                meta_parts.append(f"🏛️ <{skku_url}|성균관대 소장/원문>")
+
             blocks.append({
                 "type": "context",
                 "elements": [
