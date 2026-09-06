@@ -88,8 +88,12 @@ class Summarizer:
    - 핵심 결과: 가장 중요한 성과와 핵심 수치 위주로 1~2문장 정리
    - 기여점: 이 연구가 분야에 미치는 실질적 의의를 1문장으로 임팩트 있게 정리
 3. 【핵심 용어 쏙쏙 해설 (key_terms) 필수 - 용어명은 영문 표기】:
-   - 이 논문을 이해하기 위해 꼭 알아야 하는 핵심 개념 또는 전문 용어 2~3개를 선별하세요.
-   - 용어명(term)은 굳이 한글로 번역하거나 병기하지 말고 원래의 영문(English) 그대로 간결하게 작성하세요 (예: "Surface Code", "Magic State Distillation", "Floquet Code", "Quantum Singleton Bound", "QAOA" 등).
+   - 이 논문을 깊이 있게 이해하기 위해 필요한 구체적이고 전문적인 핵심 개념/기법 2~3개를 선별하세요.
+   - ⚠️ 【절대 금지 - 기본 용어 제외】:
+     "Quantum Computing", "Quantum Computer", "Qubit", "Quantum Algorithm", "Superposition", "Entanglement" 등 양자 분야 연구자나 독자라면 누구나 이미 알고 있는 너무 기초적이고 일반적인 개념은 절대로 용어 사전에 포함하지 마세요!
+   - 🎯 【포함할 대상】:
+     오직 해당 논문의 핵심 주제와 직접 관련된 특화된 기술, 모델, 부호, 알고리즘(예: "Surface Code", "Floquet Code", "Magic State Distillation", "Transmon", "Caldeira-Leggett Model", "TLS-defect", "Chain Map Hierarchy", "qLDPC Code", "Grover Search" 등)만 선별하세요.
+   - 용어명(term)은 원래의 영문(English) 그대로 간결하게 작성하세요.
    - 뜻 설명(definition)은 초심자나 인접 분야 연구자도 즉시 직관적으로 이해할 수 있도록 쉽고 친절한 한국어로 1문장씩 풀어주세요.
    - 예: term: "Surface Code", definition: "큐비트를 2차원 바둑판처럼 배열해 연산 중 생기는 오류를 실시간으로 찾아내고 고치는 대표적인 양자 오류정정 기술"
    - 예: term: "Magic State Distillation", definition: "노이즈가 낀 보조 큐비트들을 정제하여 복잡한 고난도 양자 계산을 가능하게 해주는 고순도 상태를 만드는 과정"
@@ -136,15 +140,34 @@ class Summarizer:
 """
 
     def _call_gemini(self, prompt: str) -> str:
+        import time
         from google import genai
         client = genai.Client(api_key=self.gemini_api_key)
-        # Using configured model, e.g., gemini-3.6-flash
-        model_name = self.config.model if self.config.model else "gemini-3.6-flash"
-        response = client.models.generate_content(
-            model=model_name,
-            contents=prompt,
-        )
-        return response.text or ""
+        primary_model = self.config.model if self.config.model else "gemini-3.6-flash"
+        fallback_models = [primary_model, "gemini-3.5-flash", "gemini-flash-latest"]
+        candidate_models = list(dict.fromkeys(fallback_models))
+
+        last_error = None
+        for model_name in candidate_models:
+            for attempt in range(1, 4):
+                try:
+                    response = client.models.generate_content(
+                        model=model_name,
+                        contents=prompt,
+                    )
+                    if response and response.text:
+                        return response.text
+                except Exception as e:
+                    last_error = e
+                    err_str = str(e)
+                    print(f"[Summarizer] ⚠️ Gemini API attempt {attempt} on '{model_name}' failed: {err_str[:120]}")
+                    if "503" in err_str or "UNAVAILABLE" in err_str or "429" in err_str:
+                        time.sleep(attempt * 3)
+                        continue
+                    else:
+                        break # Try next fallback model
+
+        raise RuntimeError(f"All Gemini models and retries failed. Last error: {last_error}")
 
     def _call_openai(self, prompt: str) -> str:
         headers = {
@@ -255,7 +278,11 @@ class Summarizer:
         """Provides extractive fallback summary when LLM API keys are not provided."""
         results = []
         for p in papers:
-            sentences = [s.strip() for s in re.split(r'(?<=[.?!])\s+', p.clean_abstract()) if s.strip()]
+            abstract = p.clean_abstract()
+            if not abstract or len(abstract.strip()) < 80 or "no abstract available" in abstract.lower():
+                continue
+
+            sentences = [s.strip() for s in re.split(r'(?<=[.?!])\s+', abstract) if s.strip()]
             one_line = sentences[0] if sentences else p.clean_title()
             problem = sentences[0] if len(sentences) > 0 else ""
             method = sentences[1] if len(sentences) > 1 else ""
@@ -270,11 +297,17 @@ class Summarizer:
             if contrib:
                 key_points.append(f"의의/기여: {contrib[:150]}...")
 
+            # Extract paper-specific technical words from title, never generic 'Quantum Computing'
+            title_words = [
+                w for w in re.findall(r'[A-Z][a-zA-Z0-9\-]+', p.clean_title())
+                if w.lower() not in ["quantum", "computing", "computer", "algorithm", "qubit", "the", "a", "an", "for", "with", "in", "via"]
+            ]
+            term_name = " ".join(title_words[:2]) if title_words else (p.categories[0] if p.categories else "Key Concept")
             mock_terms = [
-                {"term": "Quantum Computing", "definition": "양자의 중첩과 얽힘 현상을 이용해 특정 고난도 계산을 초고속으로 수행하는 차세대 기술"}
+                {"term": term_name, "definition": f"해당 연구({p.clean_title()[:35]}...)의 핵심 대상 및 구현 기법"}
             ]
 
-            tags = [f"#{cat}" for cat in p.categories[:3]] or ["#양자컴퓨팅", "#연구"]
+            tags = [f"#{cat}" for cat in p.categories[:3]] or ["#양자연구", "#핵심논문"]
             results.append(PaperSummary(
                 paper=p,
                 relevance_score=8,

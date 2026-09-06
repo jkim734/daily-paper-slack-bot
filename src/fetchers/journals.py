@@ -45,6 +45,28 @@ class JournalFetcher(BaseFetcher):
         except Exception:
             return "No abstract available."
 
+    def _fetch_abstract_from_arxiv(self, title: str) -> Optional[str]:
+        """Attempts to find preprint abstract on arXiv when journal metadata lacks open abstract."""
+        try:
+            import xml.etree.ElementTree as ET
+            import re
+            clean_t = re.sub(r'[^a-zA-Z0-9\s]', ' ', title).strip()
+            if len(clean_t) < 10:
+                return None
+            q = f'ti:"{clean_t[:100]}"'
+            url = f"https://export.arxiv.org/api/query?search_query={requests.utils.quote(q)}&max_results=1"
+            r = requests.get(url, timeout=10)
+            if r.status_code == 200:
+                root = ET.fromstring(r.text)
+                entry = root.find("{http://www.w3.org/2005/Atom}entry")
+                if entry is not None:
+                    summary = entry.find("{http://www.w3.org/2005/Atom}summary")
+                    if summary is not None and summary.text and len(summary.text.strip()) > 80:
+                        return " ".join(summary.text.split())
+        except Exception:
+            pass
+        return None
+
     def fetch_recent_papers(self, lookback_days: Optional[int] = None) -> List[Paper]:
         days = lookback_days if lookback_days is not None else self.config.lookback_days
         now = datetime.now(timezone.utc)
@@ -136,6 +158,13 @@ class JournalFetcher(BaseFetcher):
                     authors.append(author_name)
 
             abstract = self._reconstruct_abstract(item.get("abstract_inverted_index"))
+            if not abstract or len(abstract.strip()) < 80 or "no abstract available" in abstract.lower():
+                fallback_abstract = self._fetch_abstract_from_arxiv(title)
+                if fallback_abstract:
+                    abstract = fallback_abstract
+                else:
+                    # Skip papers without an abstract to prevent empty/meaningless summaries
+                    continue
 
             # Concepts/Categories
             categories = [c.get("display_name") for c in item.get("concepts", [])[:3] if c.get("display_name")]

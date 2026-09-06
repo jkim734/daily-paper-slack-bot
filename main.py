@@ -118,13 +118,17 @@ def main():
         print("[Main] No papers found for the specified period and criteria.")
         return
 
-    # 3. Filter unsent papers
+    # 3. Filter unsent papers and papers with valid abstracts
+    valid_papers = [
+        p for p in all_papers
+        if p.abstract and len(p.abstract.strip()) >= 80 and "no abstract available" not in p.abstract.lower()
+    ]
     if not args.force:
-        candidate_papers = [p for p in all_papers if not db.is_paper_sent(p.id)]
-        print(f"[Main] {len(candidate_papers)} new (unsent) papers out of {len(all_papers)} total candidates.")
+        candidate_papers = [p for p in valid_papers if not db.is_paper_sent(p.id)]
+        print(f"[Main] {len(candidate_papers)} new (unsent) valid papers out of {len(all_papers)} total candidates.")
     else:
         print("[Main] Force flag active: evaluating all retrieved papers.")
-        candidate_papers = all_papers
+        candidate_papers = valid_papers
 
     # If new candidates are fewer than min_k (e.g. weekends), try expanding lookback window
     if len(candidate_papers) < min_k and days is None and arxiv_fetcher is not None:
