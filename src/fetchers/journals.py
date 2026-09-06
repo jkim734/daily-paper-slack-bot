@@ -76,15 +76,33 @@ class JournalFetcher(BaseFetcher):
         headers = {
             "User-Agent": "DailyQuantumPaperSlackBot/1.0 (academic research monitor; mailto:contact@example.com)"
         }
+        params["mailto"] = "academic-paper-bot@users.noreply.github.com"
 
-        try:
-            response = requests.get(self.BASE_URL, params=params, headers=headers, timeout=25)
-            response.raise_for_status()
-            data = response.json()
-            results = data.get("results", [])
-        except requests.RequestException as e:
-            print(f"[JournalFetcher] Error fetching data from OpenAlex: {e}")
+        import time
+        max_retries = 3
+        data = None
+        for attempt in range(1, max_retries + 1):
+            try:
+                response = requests.get(self.BASE_URL, params=params, headers=headers, timeout=25)
+                if response.status_code in (429, 500, 502, 503, 504):
+                    wait_time = attempt * 3
+                    print(f"[JournalFetcher] ⚠️ OpenAlex {response.status_code}. Retrying in {wait_time}s (attempt {attempt}/{max_retries})...")
+                    time.sleep(wait_time)
+                    continue
+                response.raise_for_status()
+                data = response.json()
+                break
+            except requests.RequestException as e:
+                if attempt == max_retries:
+                    print(f"[JournalFetcher] Error fetching data from OpenAlex after {max_retries} attempts: {e}")
+                    return []
+                wait_time = attempt * 3
+                print(f"[JournalFetcher] ⚠️ Request error ({e}). Retrying in {wait_time}s...")
+                time.sleep(wait_time)
+
+        if not data:
             return []
+        results = data.get("results", [])
 
         papers: List[Paper] = []
         for item in results:

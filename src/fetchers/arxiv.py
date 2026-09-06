@@ -57,11 +57,28 @@ class ArxivFetcher(BaseFetcher):
             "User-Agent": "DailyPaperSlackBot/1.0 (academic research paper monitor; mailto:contact@example.com)"
         }
 
-        try:
-            response = requests.get(self.BASE_URL, params=params, headers=headers, timeout=20)
-            response.raise_for_status()
-        except requests.RequestException as e:
-            print(f"[ArxivFetcher] Error fetching data from arXiv: {e}")
+        import time
+        max_retries = 3
+        response = None
+        for attempt in range(1, max_retries + 1):
+            try:
+                response = requests.get(self.BASE_URL, params=params, headers=headers, timeout=25)
+                if response.status_code == 429:
+                    wait_time = attempt * 4
+                    print(f"[ArxivFetcher] ⚠️ arXiv 429 Too Many Requests. Retrying in {wait_time}s (attempt {attempt}/{max_retries})...")
+                    time.sleep(wait_time)
+                    continue
+                response.raise_for_status()
+                break
+            except requests.RequestException as e:
+                if attempt == max_retries:
+                    print(f"[ArxivFetcher] Error fetching data from arXiv after {max_retries} attempts: {e}")
+                    return []
+                wait_time = attempt * 3
+                print(f"[ArxivFetcher] ⚠️ Error ({e}). Retrying in {wait_time}s...")
+                time.sleep(wait_time)
+
+        if not response or response.status_code != 200:
             return []
 
         return self._parse_atom_feed(response.text, since_date)

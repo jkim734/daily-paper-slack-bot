@@ -17,8 +17,17 @@ class ScirateConfig(BaseModel):
 class ScirateFetcher(BaseFetcher):
     BASE_URL = "https://scirate.com/arxiv"
     DEFAULT_HEADERS = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Sec-Ch-Ua": '"Chromium";v="128", "Not;A=Brand";v="24"',
+        "Sec-Ch-Ua-Mobile": "?0",
+        "Sec-Ch-Ua-Platform": '"Linux"',
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1"
     }
 
     def __init__(self, config: ScirateConfig):
@@ -42,19 +51,38 @@ class ScirateFetcher(BaseFetcher):
 
         for category in self.config.categories:
             url = f"{self.BASE_URL}/{category}?range={range_param}"
+            html = ""
             try:
                 res = requests.get(url, headers=self.DEFAULT_HEADERS, timeout=20)
-                if res.status_code != 200:
+                if res.status_code == 200:
+                    html = res.text
+                elif res.status_code == 403:
+                    # Fallback to curl subprocess if Cloudflare challenges python TLS fingerprint
+                    import subprocess
+                    curl_cmd = [
+                        "curl", "-sL",
+                        "-A", self.DEFAULT_HEADERS["User-Agent"],
+                        "-H", "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                        "-H", "Accept-Language: en-US,en;q=0.9",
+                        url
+                    ]
+                    proc = subprocess.run(curl_cmd, capture_output=True, text=True, timeout=20)
+                    if proc.returncode == 0 and '<li class="paper' in proc.stdout:
+                        html = proc.stdout
+                    else:
+                        print(f"[ScirateFetcher] ⚠️ HTTP {res.status_code} fetching category '{category}' from {url}")
+                        continue
+                else:
                     print(f"[ScirateFetcher] ⚠️ HTTP {res.status_code} fetching category '{category}' from {url}")
                     continue
 
-                cat_papers = self._parse_html(res.text, default_category=category)
+                cat_papers = self._parse_html(html, default_category=category)
                 for p in cat_papers:
                     if p.id not in seen_ids and (p.scites or 0) >= self.config.min_scites:
                         seen_ids.add(p.id)
                         papers.append(p)
 
-            except requests.RequestException as e:
+            except Exception as e:
                 print(f"[ScirateFetcher] ❌ Error fetching SciRate ({category}): {e}")
 
         # Sort by Scites count descending
