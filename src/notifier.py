@@ -142,7 +142,7 @@ class SlackNotifier:
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": f"💡 *한 줄 요약*: *{item.one_line_summary}*"
+                        "text": f"💡 *요약*: *{item.one_line_summary}*"
                     }
                 })
 
@@ -155,7 +155,7 @@ class SlackNotifier:
             if item.result:
                 detail_lines.append(f"• *성과*: {item.result}")
             if item.contribution:
-                detail_lines.append(f"• *의의/기여*: {item.contribution}")
+                detail_lines.append(f"• *의의*: {item.contribution}")
 
             if not detail_lines and item.key_points:
                 detail_lines = [f"• {pt}" for pt in item.key_points]
@@ -169,7 +169,7 @@ class SlackNotifier:
                     }
                 })
 
-            # Key terms (핵심)
+            # Key terms (용어)
             if item.key_terms:
                 term_texts = []
                 for kt in item.key_terms:
@@ -185,7 +185,7 @@ class SlackNotifier:
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text": "*📖 핵심:*\n" + "\n".join(term_texts)
+                            "text": "*📖 용어:*\n" + "\n".join(term_texts)
                         }
                     })
 
@@ -249,7 +249,7 @@ class SlackNotifier:
                 for kp in s.key_points:
                     print(f"      * {kp}")
                 if s.key_terms:
-                    print("      * 📖 핵심:")
+                    print("      * 📖 용어:")
                     for kt in s.key_terms:
                         if isinstance(kt, dict):
                             print(f"        - {kt.get('term')}: {kt.get('definition')}")
