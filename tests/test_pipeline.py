@@ -86,7 +86,7 @@ class TestPaperBot(unittest.TestCase):
         self.assertIn("• *접근*:", block_text)
         self.assertIn("• *성과*:", block_text)
         self.assertIn("• *의의*:", block_text)
-        self.assertIn("*📖 용어:*", block_text)
+        self.assertIn("*용어:*", block_text)
 
     def test_slack_multi_webhook(self):
         cfg = SlackConfig()

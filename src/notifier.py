@@ -185,7 +185,7 @@ class SlackNotifier:
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text": "*📖 용어:*\n" + "\n".join(term_texts)
+                            "text": "*용어:*\n" + "\n".join(term_texts)
                         }
                     })
 
@@ -249,7 +249,7 @@ class SlackNotifier:
                 for kp in s.key_points:
                     print(f"      * {kp}")
                 if s.key_terms:
-                    print("      * 📖 용어:")
+                    print("      * 용어:")
                     for kt in s.key_terms:
                         if isinstance(kt, dict):
                             print(f"        - {kt.get('term')}: {kt.get('definition')}")
