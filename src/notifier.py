@@ -9,11 +9,12 @@ from .config import SlackConfig
 class SlackNotifier:
     def __init__(self, webhook_url: Optional[str], config: SlackConfig):
         self.webhook_url = webhook_url or ""
+        self.webhook_urls: List[str] = [u.strip() for u in self.webhook_url.split(",") if u.strip()]
         self.config = config
 
     def send_test_message(self) -> bool:
         """Sends a verification message to ensure Slack webhook is configured properly."""
-        if not self.webhook_url:
+        if not self.webhook_urls:
             print("[SlackNotifier] Error: SLACK_WEBHOOK_URL is not set.")
             return False
 
@@ -235,7 +236,7 @@ class SlackNotifier:
 
         blocks = self.format_blocks(summaries)
 
-        if dry_run or not self.webhook_url:
+        if dry_run or not self.webhook_urls:
             print("\n" + "=" * 60)
             print("[SlackNotifier] DRY RUN / PREVIEW MODE (Not sent to Slack)")
             print("=" * 60)
@@ -281,14 +282,21 @@ class SlackNotifier:
             payload["icon_emoji"] = self.config.bot_icon_emoji
 
     def _post_payload(self, payload: Dict[str, Any]) -> bool:
-        try:
-            res = requests.post(self.webhook_url, json=payload, timeout=15)
-            if res.status_code == 200:
-                print("[SlackNotifier] Message posted successfully.")
-                return True
-            else:
-                print(f"[SlackNotifier] Failed to post message. Status: {res.status_code}, Body: {res.text}")
-                return False
-        except requests.RequestException as e:
-            print(f"[SlackNotifier] Request error while posting to Slack: {e}")
+        if not self.webhook_urls:
             return False
+
+        all_success = True
+        for idx, url in enumerate(self.webhook_urls, 1):
+            url_mask = f"...{url[-12:]}" if len(url) > 12 else url
+            try:
+                res = requests.post(url, json=payload, timeout=15)
+                if res.status_code == 200:
+                    print(f"[SlackNotifier] [{idx}/{len(self.webhook_urls)}] Message posted successfully to {url_mask}.")
+                else:
+                    print(f"[SlackNotifier] [{idx}/{len(self.webhook_urls)}] Failed to post to {url_mask}. Status: {res.status_code}, Body: {res.text}")
+                    all_success = False
+            except requests.RequestException as e:
+                print(f"[SlackNotifier] [{idx}/{len(self.webhook_urls)}] Request error posting to {url_mask}: {e}")
+                all_success = False
+
+        return all_success

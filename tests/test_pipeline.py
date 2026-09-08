@@ -82,6 +82,13 @@ class TestPaperBot(unittest.TestCase):
         self.assertIn("LLM의 추론 성능을 비약적으로 개선", block_text)
         self.assertIn("사고 사슬(Chain-of-Thought)", block_text)
 
+    def test_slack_multi_webhook(self):
+        cfg = SlackConfig()
+        notifier = SlackNotifier("https://hooks.slack.com/1, https://hooks.slack.com/2 , ", cfg)
+        self.assertEqual(len(notifier.webhook_urls), 2)
+        self.assertEqual(notifier.webhook_urls[0], "https://hooks.slack.com/1")
+        self.assertEqual(notifier.webhook_urls[1], "https://hooks.slack.com/2")
+
     def test_notion_clean_id(self):
         from src.notion_sync import NotionSync
         sync = NotionSync("key", "db")
