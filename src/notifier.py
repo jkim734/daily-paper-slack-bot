@@ -142,7 +142,7 @@ class SlackNotifier:
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": f"💡 *요약*: *{item.one_line_summary}*"
+                        "text": f"*요약*: *{item.one_line_summary}*"
                     }
                 })
 
