@@ -149,11 +149,11 @@ class SlackNotifier:
             # Details (간결하고 직관적인 개조식)
             detail_lines = []
             if item.problem:
-                detail_lines.append(f"• *풀려는 문제*: {item.problem}")
+                detail_lines.append(f"• *문제*: {item.problem}")
             if item.method:
-                detail_lines.append(f"• *접근 방법*: {item.method}")
+                detail_lines.append(f"• *접근*: {item.method}")
             if item.result:
-                detail_lines.append(f"• *핵심 성과*: {item.result}")
+                detail_lines.append(f"• *성과*: {item.result}")
             if item.contribution:
                 detail_lines.append(f"• *의의/기여*: {item.contribution}")
 
@@ -169,7 +169,7 @@ class SlackNotifier:
                     }
                 })
 
-            # Key terms (핵심 용어 쏙쏙)
+            # Key terms (핵심)
             if item.key_terms:
                 term_texts = []
                 for kt in item.key_terms:
@@ -185,7 +185,7 @@ class SlackNotifier:
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text": "*📖 핵심 용어 쏙쏙:*\n" + "\n".join(term_texts)
+                            "text": "*📖 핵심:*\n" + "\n".join(term_texts)
                         }
                     })
 
@@ -249,7 +249,7 @@ class SlackNotifier:
                 for kp in s.key_points:
                     print(f"      * {kp}")
                 if s.key_terms:
-                    print("      * 📖 핵심 용어 해설:")
+                    print("      * 📖 핵심:")
                     for kt in s.key_terms:
                         if isinstance(kt, dict):
                             print(f"        - {kt.get('term')}: {kt.get('definition')}")
