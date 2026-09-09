@@ -177,9 +177,9 @@ class SlackNotifier:
                         t_name = kt.get("term", "").strip()
                         t_def = kt.get("definition", "").strip()
                         if t_name and t_def:
-                            term_texts.append(f"▫️ *{t_name}*: {t_def}")
+                            term_texts.append(f"*{t_name}*: {t_def}")
                     elif isinstance(kt, str) and kt.strip():
-                        term_texts.append(f"▫️ {kt.strip()}")
+                        term_texts.append(f"{kt.strip()}")
                 if term_texts:
                     blocks.append({
                         "type": "section",
