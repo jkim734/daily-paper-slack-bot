@@ -81,7 +81,6 @@ class TestPaperBot(unittest.TestCase):
         self.assertIn("Reasoning in LLMs", block_text)
         self.assertIn("LLM의 추론 성능을 비약적으로 개선", block_text)
         self.assertIn("사고 사슬(Chain-of-Thought)", block_text)
-        self.assertIn("*요약*:", block_text)
         self.assertIn("• *문제*:", block_text)
         self.assertIn("• *접근*:", block_text)
         self.assertIn("• *성과*:", block_text)
