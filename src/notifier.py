@@ -102,18 +102,18 @@ class SlackNotifier:
             # Metadata info
             meta_parts = []
             if p.venue and "scirate" not in p.venue.lower():
-                meta_parts.append(f"🏛️ *게재*: *{p.venue}*")
+                meta_parts.append(f"*{p.venue}*")
             elif p.source in ("arxiv", "scirate"):
-                meta_parts.append("📄 *출처*: arXiv")
+                meta_parts.append("arXiv")
 
             if p.scites is not None and p.scites > 0:
                 scirate_url = p.scirate_url or f"https://scirate.com/arxiv/{p.id.replace('arxiv:', '')}"
-                meta_parts.append(f"🔥 <{scirate_url}|*SciRate {p.scites} Scites*>")
+                meta_parts.append(f"<{scirate_url}|*SciRate {p.scites} Scites*>")
 
-            meta_parts.append(f"👤 *저자*: {authors_str or 'N/A'}")
-            meta_parts.append(f"📅 *일자*: {pub_date_str}")
+            meta_parts.append(f"{authors_str or 'N/A'}")
+            meta_parts.append(f"{pub_date_str}")
             if p.pdf_url:
-                meta_parts.append(f"🔗 <{p.pdf_url}|PDF 원문>")
+                meta_parts.append(f"<{p.pdf_url}|PDF>")
 
             # SKKU Library direct link for DOI papers
             raw_doi = ""
@@ -124,7 +124,7 @@ class SlackNotifier:
 
             if raw_doi:
                 skku_url = f"https://lib.skku.edu/search?query={raw_doi}"
-                meta_parts.append(f"🏛️ <{skku_url}|성균관대 소장/원문>")
+                meta_parts.append(f"<{skku_url}|성균관대 소장/원문>")
 
             blocks.append({
                 "type": "context",
@@ -200,12 +200,12 @@ class SlackNotifier:
             if p.scirate_url:
                 footer_elements.append({
                     "type": "mrkdwn",
-                    "text": f"💬 <{p.scirate_url}|SciRate 토론>"
+                    "text": f"<{p.scirate_url}|SciRate 토론>"
                 })
             if item.notion_url:
                 footer_elements.append({
                     "type": "mrkdwn",
-                    "text": f"📝 <{item.notion_url}|Notion에서 보기>"
+                    "text": f"<{item.notion_url}|Notion에서 보기>"
                 })
 
             if footer_elements:
@@ -222,7 +222,7 @@ class SlackNotifier:
             "elements": [
                 {
                     "type": "mrkdwn",
-                    "text": "🤖 _Daily Research Paper Notifier · Google Gemini Powered_"
+                    "text": "_Daily Research Paper Notifier · Google Gemini Powered_"
                 }
             ]
         })
