@@ -144,14 +144,20 @@ class Summarizer:
         from google import genai
         client = genai.Client(api_key=self.gemini_api_key)
 
-        # Verified active models hierarchy: 2.5-flash -> flash-latest
+        # Strict hierarchy: 3.8-flash -> 3.7-flash -> 3.6-flash -> 3.5-flash -> 2.5-flash -> flash-latest
         hierarchy = [
+            "gemini-3.8-flash",
+            "gemini-3.7-flash",
+            "gemini-3.6-flash",
+            "gemini-3.5-flash",
             "gemini-2.5-flash",
             "gemini-flash-latest",
         ]
 
-        # Respect user configured model if custom, else maintain hierarchy
-        if self.config.model and self.config.model not in hierarchy:
+        # Respect user configured model if set, ensuring it is at top priority
+        if self.config.model:
+            if self.config.model in hierarchy:
+                hierarchy.remove(self.config.model)
             hierarchy.insert(0, self.config.model)
 
         last_error = None
@@ -159,7 +165,11 @@ class Summarizer:
             next_model = hierarchy[i + 1] if i + 1 < len(hierarchy) else "None"
             print(f"[Summarizer] 🚀 Attempting summary with model: '{model_name}'...")
 
-            for attempt in range(1, 3):
+            # Allow 1 attempt for intermediate models to immediately cascade on quota exhaustion or error.
+            # Allow 2 attempts for the final fallback model for network resilience.
+            max_attempts = 2 if i == len(hierarchy) - 1 else 1
+
+            for attempt in range(1, max_attempts + 1):
                 try:
                     response = client.models.generate_content(
                         model=model_name,
@@ -171,21 +181,25 @@ class Summarizer:
                 except Exception as e:
                     last_error = e
                     err_str = str(e)
-                    # If 429 Quota Exceeded (RPD reached), immediately switch to next model without wasting retries
+                    # If 429 Quota Exceeded (RPD/RPM reached), immediately cascade to next model
                     if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "Quota exceeded" in err_str:
                         print(f"[Summarizer] ⚠️ '{model_name}' 할당량 소진 (429 Quota Exceeded). 차상위 모델 '{next_model}'(으)로 즉시 전환합니다.")
                         break
                     elif "503" in err_str or "UNAVAILABLE" in err_str:
-                        print(f"[Summarizer] ⚠️ '{model_name}' 일시적 서버 지연(503) (attempt {attempt}/2).")
-                        if attempt < 2:
+                        if attempt < max_attempts:
+                            print(f"[Summarizer] ⚠️ '{model_name}' 일시적 서버 지연(503) (attempt {attempt}/{max_attempts}). 재시도...")
                             time.sleep(2)
                             continue
                         else:
-                            print(f"[Summarizer] ⚠️ '{model_name}' 재시도 후에도 불가. 차상위 모델 '{next_model}'(으)로 전환합니다.")
+                            print(f"[Summarizer] ⚠️ '{model_name}' 서버 불가(503). 차상위 모델 '{next_model}'(으)로 즉시 전환합니다.")
                             break
                     else:
-                        print(f"[Summarizer] ⚠️ '{model_name}' 에러 ({err_str[:100]}). 차상위 모델 '{next_model}'(으)로 전환합니다.")
-                        break
+                        if attempt < max_attempts:
+                            time.sleep(1)
+                            continue
+                        else:
+                            print(f"[Summarizer] ⚠️ '{model_name}' 에러 ({err_str[:100]}). 차상위 모델 '{next_model}'(으)로 즉시 전환합니다.")
+                            break
 
         raise RuntimeError(f"All Gemini models in hierarchy ({', '.join(hierarchy)}) failed. Last error: {last_error}")
 
