@@ -144,14 +144,10 @@ class Summarizer:
         from google import genai
         client = genai.Client(api_key=self.gemini_api_key)
 
-        # Strict hierarchy: 3.8-flash -> 3.7-flash -> 3.6-flash -> 3.5-flash -> 2.5-flash -> flash-latest
+        # Verified active models hierarchy: 2.5-flash -> flash-latest
         hierarchy = [
-            "gemini-3.8-flash",
-            "gemini-3.7-flash",
-            "gemini-3.6-flash",
-            "gemini-3.5-flash",
             "gemini-2.5-flash",
-            "gemini-flash-latest"
+            "gemini-flash-latest",
         ]
 
         # Respect user configured model if custom, else maintain hierarchy
