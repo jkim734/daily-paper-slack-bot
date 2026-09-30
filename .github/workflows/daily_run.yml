@@ -2,9 +2,10 @@ name: Daily Research Paper Slack Briefing
 
 on:
   schedule:
-    # 매일 아침 07:30 KST (전날 UTC 22:30) 및 저녁 07:30 KST (당일 UTC 10:30)
-    - cron: '30 10,22 * * *'
-  workflow_dispatch: # GitHub 웹 UI에서 수동 실행 지원
+    # 하루 1회: SciRate 및 arXiv 당일 업데이트(한국 시각 11:00 AM / UTC 02:00) 완료 후
+    # 매일 오전 11:30 KST (UTC 02:30) 정기 실행
+    - cron: '30 2 * * *'
+  workflow_dispatch: # GitHub 웹 UI 또는 외부 웹 cron 트리거 지원
 
 jobs:
   run-paper-bot:
